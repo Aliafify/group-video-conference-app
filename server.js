@@ -38,17 +38,32 @@ const socketToRoom = {};
 // Listen for socket connections
 io.on("connection", (socket) => {
   try {
+    let userID = null; // Initialize userId for the socket
+  // let roomID = null
     // Handle "join-room" event
     socket.on("join-room", ({ roomId, userId, peerId }) => {
+      console.log('Joind', userId,peerId)
       // Store userId and associate with roomId
- 
+      if(rooms[roomId] && rooms[roomId].length){
+        let usersInRoom =[]
+        
+        for (let u of rooms[roomId]){
+          usersInRoom.push({userId:u.userId,socketId:u.socket.id,peerId:u.peerId}) 
+          // Emit the list of users in the room to the current user
+        }
+        console.log('sed users in room',usersInRoom)
+        socket.emit("users in room", {usersInRoom});
+      } 
+     
+      userID=userId 
+    //  roomID=roomId
       socket.join(roomId);
-
+      // console.log('users',rooms[roomId])
       // Initialize the room's user array if it doesn't exist
       if (!rooms[roomId]) {
         rooms[roomId] = [{peerId,userId,socket}];
       }
-
+      
       // Check if the user is already in the room
       else if(rooms[roomId]){
         const userExists = rooms[roomId].some((user) => user.userId === userId);
@@ -56,51 +71,46 @@ io.on("connection", (socket) => {
           // Add the socket to the room's user array
           rooms[roomId].push({ userId,peerId, socket });
         }
+        else{
+          rooms[roomId].map(u=>{
+            if(u.userId===userId){
+              return {userId,peerId,socket}
+            }
+            return u
+          })
+        }
 
       }
-const usersInRoom =rooms[roomId].map(u=>{
-  return {userId:u.userId,socketId:u.socket.id,peerId:u.peerId}
-})
+     
 
-      // Get all users in the room except the current user
-      // const usersInRoom = rooms[roomId].filter((user) => user.userId !== userId);
-
-      // Emit the list of users in the room to the current user
-      socket.emit("users in room", {usersInRoom});
 
       // Notify all clients in the room about the new user
       // io.to(roomId).emit("user-connected", { userId, socketId: socket.id });
     });
  
     // Handle "disconnect" event
-    // socket.on("disconnect", () => {
-    //   // Find the room that the disconnected user belongs to
-    //   const room = Object.entries(rooms).find(([roomId, users]) =>
-    //     users.some((user) => user.socket.id === socket.id)
-    //   );
+   
+    socket.on("disconnect", () => {
+     
+        // Notify other users in the room about the disconnected user
+        const roomId = Object.keys(rooms).find((roomId) =>
+          rooms[roomId].some((user) => user.socket.id === socket.id)
+        );
+        if (roomId) {
+          const [user]= rooms[roomId].filter(u=>u.socket.id===socket.id)
+          console.log('user left', user.userId)
+          // Remove the disconnected user from the room
+          rooms[roomId] = rooms[roomId].filter((user) => user.socket.id !== socket.id);
 
-    //   if (room) {
-    //     const [roomId, users] = room;
-    //     // Remove the disconnected user from the room
-    //     rooms[roomId] = users.filter((user) => user.socket.id !== socket.id);
-
-    //     // Notify all clients in the room about the call end
-    //     io.to(roomId).emit("callEnded");
-    //   }
-    // }); 
-
-    // Handle "share-screen" event
-    // socket.on("share-screen", ({ stream }) => {
-    //   // Emit the screen share stream to all clients in the room
-    //   const room = Object.entries(rooms).find(([roomId, users]) =>
-    //     users.some((user) => user.socket.id === socket.id)
-    //   );
-
-    //   if (room) {
-    //     const [roomId, users] = room;
-    //     io.to(roomId).emit("shared-screen", { stream });
-    //   }
-    // });
+          // Emit a 'user left' event to notify other users in the room
+          io.to(roomId).emit("user left", { userId:user.userId,socketId:user.id });
+ 
+          // Perform any additional cleanup tasks if needed
+          // console.log(`User ${user.userId} has disconnected`);
+        }
+      
+    });
+    
   } catch (err) {
     console.error("Error occurred in socket connection:", err.message);
   }
