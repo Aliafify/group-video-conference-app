@@ -53,8 +53,8 @@ io.on("connection", (socket) => {
         }
         console.log('sed users in room',usersInRoom)
         socket.emit("users in room", {usersInRoom});
-      } 
-     
+      }      
+        
       userID=userId 
     //  roomID=roomId
       socket.join(roomId);
@@ -96,15 +96,16 @@ io.on("connection", (socket) => {
         const roomId = Object.keys(rooms).find((roomId) =>
           rooms[roomId].some((user) => user.socket.id === socket.id)
         );
+        // console.log('rooms', rooms[roomId].pop())
         if (roomId) {
           const [user]= rooms[roomId].filter(u=>u.socket.id===socket.id)
-          console.log('user left', user.userId)
+          console.log('user left', user)
           // Remove the disconnected user from the room
           rooms[roomId] = rooms[roomId].filter((user) => user.socket.id !== socket.id);
 
           // Emit a 'user left' event to notify other users in the room
-          io.to(roomId).emit("user left", { userId:user.userId,socketId:user.id });
- 
+          io.to(roomId).emit("user left", { userId:user.userId,socketId:user.socket.id });
+//  console.log(first)
           // Perform any additional cleanup tasks if needed
           // console.log(`User ${user.userId} has disconnected`);
         }
