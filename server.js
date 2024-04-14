@@ -109,9 +109,9 @@ io.on("connection", (socket) => {
           // Perform any additional cleanup tasks if needed
           // console.log(`User ${user.userId} has disconnected`);
         } 
-       
-    });
-    
+        
+    });   
+     
   } catch (err) {
     console.error("Error occurred in socket connection:", err.message);
   }
